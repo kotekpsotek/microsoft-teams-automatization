@@ -194,7 +194,7 @@ async fn main()
         // Linia wiersza poleceń w celu odpalenia aplikacji
         let app = App::new("Teams Automatization Tool")
         .version("1.0")
-        .author("//Dodać tutaj swoje id profilu Proton!!!")
+        .author("SiematuMichael@protonmail.com")
         .about("This application is the automatization tool for login in Microsoft Teams Web Application and joining to the Microsoft Teams meeting without user interference, but user can turn on/off camera, mike and using other ms.teams feautures when he is in meettings")
         .arg(Arg::with_name("run") // argument odpalajacy program
                     .long("run")
