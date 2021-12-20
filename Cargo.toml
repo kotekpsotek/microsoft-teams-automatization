@@ -1,0 +1,26 @@
+[package]
+name = "teams-automatization"
+version = "1.0.0"
+edition = "2021"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thirtyfour = "0.27.3" # selenium webdriver library no-official
+tokio = { version = "1.14.0", features = ["full"] }
+serde = "1.0.130"
+clap = "2.33.3" # obsługa argumentów i komand w aplikacji cli
+serde_json = "1.0.72"
+question = "0.2.2" # zadwanie pytań w aplikacji cli
+indicatif = "0.16.2" # pasek postępu akcji w aplikacji cli
+rand = "0.8.4" # generowanie liczb randomowych
+rust-crypto = "0.2.36" # biblioteka do geneorowania klucza pbkdf2
+magic-crypt = "3.1.9" # biblioteka do szybkiego szyforwnia danych
+colored = "2.0.0" # biblioteka, która powoduje że w konsoli wyświetlane są kolory
+ctrlc = "3.2.1" # przechwywytywanie kliknięcia w przycisk CTRL-C przez użytkownika w celu zamknięcia programu .exe
+chrono = "0.4.19" # uzyskiwanie daty i innych danych związanych z czasem
+enigo = "0.0.14" # Biblioteka do emitowania zdarzeń klawiatury oraz myszki użytkownika w programach (w celu umożliwienia zalogowania w momencie gdy wyświetla się informacja o przejściu do aplikacji ms teams z przeglądarkowej wersji, której selenium nie może obsłużyć)
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"

@@ -1,0 +1,1 @@
+This is folder with your application configuration. If you read this text you can remember it and delete this file for having more clean config folder
