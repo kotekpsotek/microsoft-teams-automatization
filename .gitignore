@@ -1,5 +1,8 @@
 /config/schema-no-meetings.json
+/config/banned-meetings.json
+/config/main.config.json
 /target
 ABOUT.md
 NOT_JOIN_TO_BANNED_MEETNG_SYSTEM.txt
 README.md
+FAST-ABOUT.md

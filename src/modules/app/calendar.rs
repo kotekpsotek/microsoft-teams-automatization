@@ -1,5 +1,6 @@
 /* This module contains BOT callendar future */
 use crate::*;
+const HOW_MUCH_USER_MUST_BE_TO_LEAVE_MEETING: u64 = 13; // Jeżeli liczba uczestników spotkania jest mniejsza lub równa 
 
 #[allow(dead_code)]
 pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
@@ -23,8 +24,16 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
     async fn go_to_callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
     {
         let callendar_button: WebElement = driver.find_element(By::Id("app-bar-ef56c0de-36fc-4ef8-b417-3d82ba9d073c")).await.expect("Program can't found callendar button!!!");
-        callendar_button.click().await.expect("Program can't go to the callendar!!!"); // Szukanie lekcji w kalendarzy TODO: Ma zostać ona dodana do funkcji sprawdzającej rzeczy raz na jakiś czas tak samo jak metoda setInterval z JavaScriptu
-        std::thread::sleep(std::time::Duration::from_secs(12)); // czekanie na przejście do kalendarza
+        // Sprawdzanie czy można kliknąć w przycisk kalendarza, który przekierowywuje nas do kalendarza
+        if callendar_button.is_clickable().await.is_ok()
+        {
+            callendar_button.click().await.expect("Program can't go to the callendar!!!"); // Szukanie lekcji w kalendarzy TODO: Ma zostać ona dodana do funkcji sprawdzającej rzeczy raz na jakiś czas tak samo jak metoda setInterval z JavaScriptu
+            std::thread::sleep(std::time::Duration::from_secs(12)); // czekanie na przejście do kalendarza
+        }
+        else // w momencie gdy w ten element nie da się kliknąć
+        {
+            panic!("You see this because program coudn't click on calendar button in \"teams\" app bar to go to planed meetings callendar!!!");
+        };
     }
 
     //& Funkcja, która zwraca numer dnia z kalendarza teams, który jest równy dzisiejszemu dniu (jeżeli nie dopasuje dnia to zwraca wyliczenie Result)
@@ -121,6 +130,19 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
     //& Funkcja, która powoduje, że uzytkownik dołączył na spotkanie
     async fn join_to_meeting(driver: &GenericWebDriver<ReqwestDriverAsync>)
     {
+        //& -- Funkcja, która zamyka informację o dostępnych aplikacjach w pakiecie Office 365
+        async fn close_ms365_applications_info(driver: &GenericWebDriver<ReqwestDriverAsync>)
+        {
+            std::thread::sleep(std::time::Duration::from_secs(5)); // czeka na wyświetlenie się elementu
+            let element_info = driver.find_element(By::ClassName("ts-waffle-overlay")).await;
+            if element_info.is_ok() // jeżeli ten element jest wyświetlony to zamyka go a następnie pokazuje elementy
+            {
+                driver.find_element(By::XPath("/html/body")).await.expect("Program coudn't found document body").click().await.expect("Program coudn't click on body"); // klikanie w centrum elementu w celu zamknięcia listy
+                std::thread::sleep(std::time::Duration::from_secs(1)); // czekanie na zamknięcie się elementu z danymi
+                show_meeting_bar(&driver).await; // wyśweitlanie bara po akcji usunięcia tej informacji
+            }
+        }
+
         // Otrzymanie przełączników urządzeń: mikrofonu oraz kamerki
         let on_off_buttons: Vec<WebElement> = driver.find_element(By::ClassName("buttons-container")).await.expect("Program coudn't find devices buttons container!!!").find_elements(By::Tag("toggle-button")).await.expect("Program coudn't find on/off device buttons!!!"); // 0 - kamera, 1 - mikrofon
 
@@ -147,7 +169,9 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
         // join to meeting
         std::thread::sleep(std::time::Duration::from_millis(300));
         driver.find_element(By::ClassName("join-btn")).await.expect("Program can't find join to meeting button!!!").click().await.expect("Program can't click on join to meeting button!!!");
-        std::thread::sleep(std::time::Duration::from_secs(10)); // czekanie 15 sekund na dołączenie do spotkania: ma zapobiegać to błędom
+        // std::thread::sleep(std::time::Duration::from_secs(10)); // czekanie 15 sekund na dołączenie do spotkania: ma zapobiegać to błędom
+        // std::thread::sleep(std::time::Duration::from_secs(2 * 60)); // czekanie 2 minuty na wpuszczanie do spotkanie w momencie gdy jest coś takiego jak poczekalnia na spotkaniu: ma zapobiegać to błędom (głupi wynalazek)
+        std::thread::sleep(std::time::Duration::from_secs(60)); // czekanie 2 minuty na wpuszczanie do spotkanie w momencie gdy jest coś takiego jak poczekalnia na spotkaniu: ma zapobiegać to błędom (głupi wynalazek)
 
         // send an invitation to another person to join the meeting handling which delte this element from user view :)
         let send_invite_element_find = driver.find_element(By::ClassName("ngdialog-content")).await;
@@ -158,12 +182,18 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
             show_meeting_bar(&driver).await;
             show_meeting_bar(&driver).await;
         }
+        else
+        {
+            show_meeting_bar(&driver).await;
+        };
+        // zamykanie informacji o aplikacjach z pakietu Microsoft Office 365 -- abstrakcja tego elementu uwzględnia, że może on zostac wyświetlony lub może on nie zostać wyświetlony
+        close_ms365_applications_info(&driver).await;
     }
 
     //&-- funkcja, która pokazuje bar spotkania w momencie gdy użytkownik znajduje się na spotkaniu
     async fn show_meeting_bar(driver: &GenericWebDriver<ReqwestDriverAsync>)
     {
-        driver.action_chain().move_by_offset(15, 4).move_by_offset(-15, -4).click().perform().await.expect("Program coudn't move cursor for show meeting bar!!!");
+        driver.action_chain().move_by_offset(650, 250).move_by_offset(-650, -250).click().perform().await.expect("Program coudn't move cursor for show meeting bar!!!");
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
 
@@ -289,12 +319,25 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
                 
                 std::thread::sleep(std::time::Duration::from_secs(18)); // czekanie na wyjście ze spotkania
                 
-                // Obsługa gdy ze spotkania wrzuci nas w jakieś inne miejsce aplikacji niż
-                if driver.current_url().await.expect("Program coudn't get current page url!!!").contains("https://teams.live.com/_#/conversations/") // gdy zostaliśmy przekierowani po wyjściu ze spotkania do chatów to przechodzi spowrotem do kalendarza
+                // Za pomocą tego fragmentu kodu sprawdzana jest 
+                let domains: [&str; 17]= ["api.teams.skype.com", "img.teams.skype.com", "lync.cn", "lync.com", "sfb.trafficmanager.net", "sfbassets.com", "skypeforbusiness.com", "teams-msedge.net", "teams.cdn.live.net", "teams.cdn.office.net", "teams.events.data.microsoft.com", "teams.live.com", "teams.microsoft.com", "teams.microsoft.us", "teams.office.com", "teams.office.net", "teams.skype.com"]; // lista domen microsoft teams
+                let mut itterated_count: usize = 0;
+                for d_name in domains.iter()
                 {
-                    go_to_callendar(&driver).await
-                }
-                println!("{}", "Program has left the meeting and is waiting for the next one!!!".bright_green());
+                    itterated_count += 1; // powiększanie liczby iteracji po elementach tablicy
+                    // W moemncie gdy domena znajduje się na liście domen microsoft teams
+                    if driver.current_url().await.expect("Program coudn't get current page url!!!").contains(d_name)
+                    {
+                        println!("{}", "Program has left the meeting and is waiting for the next one!!!".bright_green());
+                        go_to_callendar(&driver).await; // przechodzenie z powrotem do kalendarz w celu czekania na kolejne spotkanie
+                        break;
+                    }
+                    // W momencie gdy nie dopasowano domeny do listy domen a pętla przeszła przez wszystkie domeny znajdujące się na liście
+                    else if itterated_count == domains.len()
+                    {
+                        panic!("You are rejected from ended meeting to unsupported domain. This is the reason why you see that!!! Conntact with contributtor to add this domain to meetings domain list")
+                    };
+                };
             }
         }
         activate(&driver).await
@@ -401,7 +444,7 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
                     // on_meeting = false; // umożliwianie ponownego dołączania na spotkanie
                     break; // zakończenie infinity loopa ponieważ użytkownik wyszedł ze spotkania
                 }
-                else if actual_user_in_meeting_count < last_iteration_user_in_meeting_count / 2 && last_iteration_user_in_meeting_count > 1  // wychodzi w momencie gdy liczba użytkowników na spotkaniu zmiejszyła się o połowę względem poprzedniej iteracji gdy jej liczba była większa 1
+                else if (actual_user_in_meeting_count < last_iteration_user_in_meeting_count / 2 || actual_user_in_meeting_count <= HOW_MUCH_USER_MUST_BE_TO_LEAVE_MEETING) && last_iteration_user_in_meeting_count > 1  // wychodzi w momencie gdy liczba użytkowników na spotkaniu zmiejszyła się o połowę względem poprzedniej iteracji gdy jej liczba była większa od 1 lub liczba uczestników spotkania jest równa ustawiopnej liczbie uczestników po, której osiągnięciu lub osiągnięciu mniejszej liczbny od niej bot ma wychodzić ze spotkania
                 {
                     leaving_the_meeting(&driver).await;
                     // on_meeting = false; // umożliwianie ponownego dołączania na spotkanie
@@ -479,9 +522,15 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
                     date_matching = true; // określanie, że data spotkania równa dziejszej dacie jest równa
                     let mut on_meeting: bool = false; // w momencie gdy użytkownik znajduje się na spotkaniu to jest ona ustawiona na true i uniemożliwia ona dołączenie na spotkanie
                     let mut banned_meetings_collection = Vec::<usize>::new(); // kolekcja z numerami iteracji zbanowanych spotkań
-                    let end_meeting_break_time: u64 = 15; // ile spotkanie ma być przed końcem aby na nie nie wszedł
+                    let end_meeting_break_time: u64 = 5; // ile spotkanie ma być przed końcem aby na nie nie wszedł
                     let mut meeting_is_active_but_not_equal_requirements: bool = true; // (zabezpieczenie przed wielokrotnym wyświetlaniem komunikatów czemu program nie dołącza na spotkanie) w momencie gdy spotkanie jest aktywne i mógłby na nie dołączyć ale nie spełnione zostają wymogi aby mógł na nie dołączyć
                     let mut dis_display_finded_meetings_count_info: bool = true;
+                    let mut bot_last_missed_meeting: TeamsCalendaryMeeting = TeamsCalendaryMeeting {
+                        name: String::from("nil"),
+                        organizator: String::from("nil"),
+                        start_time: String::from("nil"),
+                        end_time: String::from("nil")
+                    };
 
                     let element_class: String = element.clone().class_name().await.unwrap().unwrap();
 
@@ -546,7 +595,7 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
                                         - Na spotkanie ma wchodzić gdy długość spotkania jest większa od lub równa czasowi nie wchodzenia przed końcem + 5 minut i gdy spotkanie się rozpoczeło
                                         - Wchodzi pod warunkiem, że spotkanie nie znajduje się na liście zbanowanych spotkań
                                     */
-                                    if how_long_meeting_does_take >= end_meeting_break_time + 5 && now_time_in_minutes >= start_meeting_time_in_minutes && now_time_in_minutes < end_meeting_time_in_minutes - end_meeting_break_time && !banned_meetings_collection.contains(&iteration) // gdy czas spotkanie się zgadza oraz spotkanie nie zostało zakwalifikowane jako zbanowane!!! (Na spotkanie wchodzi w momencie gdy nie jest ono zbanowane oraz w momencie gdy zostało mniej niż 15 minut do końca spotkania)
+                                    if how_long_meeting_does_take >= end_meeting_break_time + 5 && now_time_in_minutes >= start_meeting_time_in_minutes + 2 && now_time_in_minutes < end_meeting_time_in_minutes - end_meeting_break_time && !banned_meetings_collection.contains(&iteration) // gdy czas spotkanie się zgadza oraz spotkanie nie zostało zakwalifikowane jako zbanowane!!! (Na spotkanie wchodzi w momencie gdy nie jest ono zbanowane oraz w momencie gdy zostało mniej niż 15 minut do końca spotkania), dołącza na spotkanie 2 minuty po jego rozpoczęciu oraz w momencie gdy spotkaniem na, które dołaczył bot. Bot zapisuje spotkania na, którym neidawano był w celu nie wyswietlania komunikatu czemu nie mógł na nie dołączyć, ale nie sprawdza tego przy dołączaniu w celu umożliwienia dołączania na te same spotkanie
                                     { //& Tutaj użytkownik dołącza na spotkanie ms.teams
 
                                         if banned_meeting_list.len() > 0 // jeżeli jakieś spotkania zosały wogóle zbanowane
@@ -577,7 +626,13 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
                                                     on_meeting = true; // ustawianie że użytkwonik znajduje się na spotkaniu co zapobiega przed dołączaniem na kolejne spotkania
                                                     meeting_is_active_but_not_equal_requirements = true; // umożliwianie ponownego wyświetlania komunikatu czemu nie dołaczył na spotkanie
                                                     meeting_handler(&driver, end_meeting_time_in_minutes, now_hour_time, now_minute_time, now_sceond_time, meeting, meeting_day_number, iteration).await;
-                                                    on_meeting = false; // po tym jak uzytkownik wyszedł ze spotkania
+                                                    //& - Dodawanie danych spotkania na, którym był bot w celu nie próbowania dołączyć na nie oraz nie wyświetlania komunikatu o tym dlaczego bot na nie nie mógł dołączyć
+                                                    bot_last_missed_meeting.name = meeting.name.clone();
+                                                    bot_last_missed_meeting.organizator = meeting.organizator.clone();
+                                                    bot_last_missed_meeting.start_time = meeting.start_time.clone();
+                                                    bot_last_missed_meeting.end_time = meeting.end_time.clone();
+                                                    //& - Po tym jak uzytkownik wyszedł ze spotkania
+                                                    on_meeting = false;
                                                     break; // zatrzymywanie pętli przechodzącej przez spotkania
                                                 }
                                                 else // jeżeli liczby te nie są sobie równe to oznacza to, że zostało znalezione zbanowane spotkanie
@@ -604,20 +659,22 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
 
                                         if meeting_is_active_but_not_equal_requirements // jeżeli nie zostały wyświetlone już komunikaty o tym, że program nie może dołączyć na spotkanie
                                         {
-                                            if how_long_meeting_does_take <= end_meeting_break_time + 5 && now_time_in_minutes >= start_meeting_time_in_minutes && now_time_in_minutes <= end_meeting_time_in_minutes // jeżeli spotkanie trawa mniej niż 20 minut oraz się ono zaczęło oraz się ono jeszcze nie skończyło
+                                            if bot_last_missed_meeting.name != meeting.name && bot_last_missed_meeting.start_time != meeting.start_time && bot_last_missed_meeting.end_time != meeting.end_time //& - jeżeli spotkanie dla, którego bot wyświetla komunikat czemu nie mógł na nie dołaczyć nie jest ostatnim spotkaniem z, którego wyszedł bot (nie uwzględnia organizatora spotkania)
                                             {
-                                                println!("{}", format!("In order for the program to join the meeting, it must last {} minutes or more!!!", end_meeting_break_time + 5).red());
-                                                meeting_is_active_but_not_equal_requirements = false;
-                                                println!("Meeting name: {}", meeting.name);
-                                            }
-                                            else if now_time_in_minutes >= start_meeting_time_in_minutes && now_time_in_minutes >= end_meeting_time_in_minutes - end_meeting_break_time && now_time_in_minutes <= end_meeting_time_in_minutes // jeżeli spotkanie trwa lub się rozpoczęło, ale zostało mniej lub 15 minut do jego końca oraz spotkanie się nie skończyło
-                                            {
-                                                println!("{}", format!("Program coudn't join the meeting {} minutes before the end of the meeting!!!", end_meeting_break_time).red());
-                                                meeting_is_active_but_not_equal_requirements = false;
-                                                println!("Meeting name: {}", meeting.name);
+                                                if how_long_meeting_does_take <= end_meeting_break_time + 5 && now_time_in_minutes >= start_meeting_time_in_minutes && now_time_in_minutes <= end_meeting_time_in_minutes // jeżeli spotkanie trawa mniej niż 20 minut oraz się ono zaczęło oraz się ono jeszcze nie skończyło
+                                                {
+                                                    println!("{}", format!("In order for the program to join the meeting, it must last {} minutes or more!!!", end_meeting_break_time + 5).red());
+                                                    meeting_is_active_but_not_equal_requirements = false;
+                                                    println!("Meeting name: {}", meeting.name);
+                                                }
+                                                else if now_time_in_minutes >= start_meeting_time_in_minutes && now_time_in_minutes >= end_meeting_time_in_minutes - end_meeting_break_time && now_time_in_minutes <= end_meeting_time_in_minutes // jeżeli spotkanie trwa lub się rozpoczęło, ale zostało mniej lub 15 minut do jego końca oraz spotkanie się nie skończyło
+                                                {
+                                                    println!("{}", format!("Program coudn't join the meeting {} minutes before the end of the meeting!!!", end_meeting_break_time).red());
+                                                    meeting_is_active_but_not_equal_requirements = false;
+                                                    println!("Meeting name: {}", meeting.name);
+                                                };
                                             };
-                                            
-                                        }
+                                        };
                                     };
                                     iteration += 1; // powiększanie liczby iteracji
                                 }
