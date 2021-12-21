@@ -1,6 +1,6 @@
 /* This module contains BOT callendar future */
 use crate::*;
-const HOW_MUCH_USER_MUST_BE_TO_LEAVE_MEETING: u64 = 13; // Jeżeli liczba uczestników spotkania jest mniejsza lub równa 
+const HOW_MUCH_USER_MUST_BE_TO_LEAVE_MEETING: u64 = 13; // Jeżeli liczba uczestników spotkania jest mniejsza lub równa WARNING: This only working when user count from meeting when user join to meeting is higher then this count
 
 #[allow(dead_code)]
 pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
@@ -456,7 +456,7 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
                     // on_meeting = false; // umożliwianie ponownego dołączania na spotkanie
                     break; // zakończenie infinity loopa ponieważ użytkownik wyszedł ze spotkania
                 }
-                else if (actual_user_in_meeting_count < last_iteration_user_in_meeting_count / 2 || actual_user_in_meeting_count <= HOW_MUCH_USER_MUST_BE_TO_LEAVE_MEETING) && last_iteration_user_in_meeting_count > 1  // wychodzi w momencie gdy liczba użytkowników na spotkaniu zmiejszyła się o połowę względem poprzedniej iteracji gdy jej liczba była większa od 1 lub liczba uczestników spotkania jest równa ustawiopnej liczbie uczestników po, której osiągnięciu lub osiągnięciu mniejszej liczbny od niej bot ma wychodzić ze spotkania
+                else if (actual_user_in_meeting_count < last_iteration_user_in_meeting_count / 2 || (actual_user_in_meeting_count <= HOW_MUCH_USER_MUST_BE_TO_LEAVE_MEETING) && (HOW_MUCH_USER_MUST_BE_TO_LEAVE_MEETING < when_user_join_users_count)) && last_iteration_user_in_meeting_count > 1  // wychodzi w momencie gdy liczba użytkowników na spotkaniu zmiejszyła się o połowę względem poprzedniej iteracji gdy jej liczba była większa od 1 lub liczba uczestników spotkania jest równa ustawiopnej liczbie uczestników po, której osiągnięciu lub osiągnięciu mniejszej liczbny od niej bot ma wychodzić ze spotkania
                 {
                     leaving_the_meeting(&driver).await;
                     // on_meeting = false; // umożliwianie ponownego dołączania na spotkanie
