@@ -130,19 +130,6 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
     //& Funkcja, która powoduje, że uzytkownik dołączył na spotkanie
     async fn join_to_meeting(driver: &GenericWebDriver<ReqwestDriverAsync>)
     {
-        //& -- Funkcja, która zamyka informację o dostępnych aplikacjach w pakiecie Office 365
-        async fn close_ms365_applications_info(driver: &GenericWebDriver<ReqwestDriverAsync>)
-        {
-            std::thread::sleep(std::time::Duration::from_secs(5)); // czeka na wyświetlenie się elementu
-            let element_info = driver.find_element(By::ClassName("ts-waffle-overlay")).await;
-            if element_info.is_ok() // jeżeli ten element jest wyświetlony to zamyka go a następnie pokazuje elementy
-            {
-                driver.find_element(By::XPath("/html/body")).await.expect("Program coudn't found document body").click().await.expect("Program coudn't click on body"); // klikanie w centrum elementu w celu zamknięcia listy
-                std::thread::sleep(std::time::Duration::from_secs(1)); // czekanie na zamknięcie się elementu z danymi
-                show_meeting_bar(&driver).await; // wyśweitlanie bara po akcji usunięcia tej informacji
-            }
-        }
-
         // Otrzymanie przełączników urządzeń: mikrofonu oraz kamerki
         let on_off_buttons: Vec<WebElement> = driver.find_element(By::ClassName("buttons-container")).await.expect("Program coudn't find devices buttons container!!!").find_elements(By::Tag("toggle-button")).await.expect("Program coudn't find on/off device buttons!!!"); // 0 - kamera, 1 - mikrofon
 
@@ -186,15 +173,40 @@ pub async fn callendar(driver: &GenericWebDriver<ReqwestDriverAsync>)
         {
             show_meeting_bar(&driver).await;
         };
-        // zamykanie informacji o aplikacjach z pakietu Microsoft Office 365 -- abstrakcja tego elementu uwzględnia, że może on zostac wyświetlony lub może on nie zostać wyświetlony
-        close_ms365_applications_info(&driver).await;
     }
 
     //&-- funkcja, która pokazuje bar spotkania w momencie gdy użytkownik znajduje się na spotkaniu
     async fn show_meeting_bar(driver: &GenericWebDriver<ReqwestDriverAsync>)
     {
-        driver.action_chain().move_by_offset(650, 250).move_by_offset(-650, -250).click().perform().await.expect("Program coudn't move cursor for show meeting bar!!!");
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        // Usuwanie przycisku do otwierania menu za aplikacjami office 365
+        driver.execute_script("
+            const appOffice365IdiotCreatedButtonOpenBars = document.getElementById(\"ts-waffle-button\");
+            if (appOffice365IdiotCreatedButtonOpenBars) // usuwanie tego jebanego przycisku powodującego wyświetlanie się aplikacji z pakietu office 365 pod warunkiem, że go znalezioono
+            {
+                appOffice365IdiotCreatedButtonOpenBars.remove();
+            };
+        ").await.expect("Program coudn't execute JavaScript script #2!!!"); // app-svg icons-waffle
+        
+        // Wykonywanie akcji --It works in 100% with office 365 :)
+        if driver.current_url().await.unwrap().contains("teams.microsoft.com") // W momencie gdy jest to wersja teamsów office 365: teams.microsoft.com
+        {
+            let element_with_users: WebElement = driver.find_element(By::XPath("//*[@id=\"page-content-wrapper\"]/div[1]/div/calling-screen/div/div[2]/div[2]")).await.expect("Program coudn't found teeging users grid");
+            element_with_users.click().await.expect("Program coudn't click on grid container with users!!!");
+        }
+        else // wersja teamsów inna niż ta podana mp: teams.live.com
+        {
+            driver.action_chain().move_by_offset(650, 650).move_by_offset(-650, -650).click().perform().await.expect("Program coudn't move cursor for show meeting bar!!!");
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        };
+        
+        // Usuwanie menu z aplikacjami microsoft office 365
+        driver.execute_script("
+            const fuckingOffice365BreatedByIdiotMenu = document.getElementsByClassName(\"ts-waffle-overlay\")[0];
+            if (fuckingOffice365BreatedByIdiotMenu)
+            {
+                fuckingOffice365BreatedByIdiotMenu.remove();
+            };
+        ").await.expect("Program coudn't execute JavaScript script #2!!!");
     }
 
     //&-- Funkcja ta zwraca liczbę osób, które są na spotkaniu nie uwzględniając przy tym siebie (czyli numer osób minus 1)
