@@ -148,7 +148,7 @@ async fn application_main()
     {
         // Odpalanie sterownika dla przegladarki
         let mut run_chromedriver = Command::new("powershell");
-        run_chromedriver.args(&["&", r"C:\Users\Michał\Desktop\teams-automatization\drivers\chromedriver.exe", "--port=4444"]);
+        run_chromedriver.args(&["&", r".\drivers\chromedriver.exe", "--port=4444"]);
         run_chromedriver.spawn().expect(add_newline_characters("Failed to read the file...", 2, 2, "err").as_str());
         // println!("{}", add_newline_characters("\n\n\nOczekiwanie na odpalenie sterownika dla przeglądarki!!!\n\n\n", 2, 2));
         std::thread::sleep(std::time::Duration::from_millis(500));
